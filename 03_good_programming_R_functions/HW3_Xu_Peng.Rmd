@@ -1,0 +1,271 @@
+---
+title: "Homework3"
+author: "Peng Xu"
+date: "2017/9/16"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+    library(tidyverse)
+    library(beeswarm)
+    library(stargazer)
+    library(data.table)
+    library(lubridate)
+    library(knitr)
+    library(rmarkdown)
+    library(dplyr)
+    library(tidyr)
+    library(stargazer)
+
+    library(lintr)
+    knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 4
+
+These two guides introduce basic aspects of codint style, including naming, syntax, and organization. A lot of deatails are introduced for R programming. With good coding style, the codes could be read, modified, and shared easily. As to me, the good coding style lies in the uniformity of code. For example, I will name the variable with the same format. If one third programmer open it, the contents could be understood easily. The best way to improve it is still practicing coding under these guides.
+
+# Problem 5
+```{r, include=FALSE}
+lint(filename = "D:/Git/STAT_5015_homework/02_data_munging_summarizing_R_git/HW2_Xu_Peng.Rmd")
+```
+
+With this function, it is surprised of me to see these hundreds of suggestions. Most of them suggest adding spaces at certain positions to make the code clear. Some other tips, such as line length and double quote, are also mentioned.
+
+# Problem 6
+```{r, include=FALSE}
+datasum <- function(dev1,dev2) {
+    m1 <- mean(dev1)
+    m2 <- mean(dev2)
+    sd1 <- sd(dev1)
+    sd2 <- sd(dev2)
+    cov12 <- cov(dev1,dev2)/sd1/sd2
+    result <- data.frame(Mean1 = m1, Std1 = sd1, Mean2 = m2, Std2 = sd2, Corr = cov12)
+    return(result)
+}
+
+
+RawData <- readRDS('HW3_data.rds')
+
+Observer <- NULL
+Mean1 <- NULL
+STD1 <- NULL
+Mean2 <- NULL
+STD2 <- NULL
+Correlation <- NULL
+    
+for(i in 1:13){
+    Obs <- subset(RawData,RawData$Observer == i)
+    statresult <- datasum(Obs$dev1,Obs$dev2)
+    
+    Observer <- rbind(Observer, i)
+    Mean1 <- rbind(Mean1, statresult$Mean1)
+    STD1 <- rbind(STD1,statresult$Std1)
+    Mean2 <- rbind(Mean2,statresult$Mean2)
+    STD2 <- rbind(STD2,statresult$Std2)
+    Correlation <- rbind(Correlation,statresult$Corr)
+}
+
+FinalResult <- data.frame(Observer = Observer, Mean1 = Mean1, 
+                          Std1 = STD1, Mean2 = Mean2, 
+                        Std2 = STD2, Cov = Correlation)
+```
+
+The statistics of two devices are summarized as the table below.\
+```{r}
+    knitr::kable(FinalResult, caption="13 Observer Summary")
+```
+
+The boxplot and violin plot are also drawn below.\
+```{r,fig.height = 3, fig.width = 5}
+    boxplot(cbind(FinalResult$Mean1,FinalResult$Mean2),
+            main= toupper("Mean Boxplot"), 
+            xlab="Dev1 and Dev2", ylab="Mean Value")
+```
+
+
+```{r,fig.height = 3, fig.width = 5}
+library(vioplot)
+library(sm)
+
+x1 <- FinalResult$Std1
+x2 <- FinalResult$Std2
+
+vioplot(x1, x2, names=c("STD1", "STD2"), 
+   col="gold")
+title("STD Violin Plot")
+```
+
+
+# Problem 7
+```{r, include=FALSE}
+    url<-"http://www2.isye.gatech.edu/~jeffwu/wuhamadabook/data/BloodPressure.dat"
+    BloodPressure_Raw<-read.table(url, header=T, skip=1, fill=T, stringsAsFactors = F)
+    
+    colnames(BloodPressure_Raw)<-c("Day",paste("Device",1:3,sep="_"),
+                                   "Day2",paste("Doctor",1:3,sep="_"))
+    BloodPressure_Tidy <- select(BloodPressure_Raw,-Day2) %>%
+                        gather(Approach,Value,Device_1:Doctor_3) %>%
+                        arrange(Day)
+
+```
+
+```{r}
+    knitr::kable(summary(BloodPressure_Tidy), caption="Blood Pressure summary")
+```
+
+
+# Problem 8
+The function is plotted first for observation. \
+```{r, echo=FALSE, fig.height=3, fig.width=5}
+f_x <- function(x){
+    y <- 3^x - sin(x) + cos(5*x)
+    return(y)
+}
+
+f_x_deri <- function(x){
+    y <- log(3)*3^x - cos(x) - 5*cos(5*x)
+    return(y)
+}
+
+x <- 0:1000/1000
+y <- f_x(x)
+plot(x,y)
+
+```
+
+Using Newton's method, the iteration process could be realized through the while loop.Here the support is set as [0,1] while the precision is defined as 0.001. Then the result of minimum value could be calculated as 0.5169415. \
+```{r}
+solve_func <- function(Min,Max,Tolerance){
+    set.seed(1)
+    InitValue <- runif(1,min=Min,max=Max)
+    tolerance <- Tolerance
+    error <- 1
+    X1 <- InitValue
+    while (error > tolerance){
+        X2 <- X1 - f_x(X1)/f_x_deri(X1)/100
+        error <- abs(X2-X1)
+        X1 <- X2
+    }
+    return(X2)
+}
+
+```
+
+
+```{r}
+    solve_func(0,1,0.001)
+```
+
+
+# Problem 9
+
+```{r, eval=FALSE, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(data.table)
+setwd('D:/Git')
+
+#### Preparation of Raw Data
+Personal_car_detail <- read.csv('Personenauto_basisdata.csv')
+Observed_Defects <- read.csv('Open_Data_RDW__Geconstateerde_Gebreken.csv')
+Defect_Details <- read.csv('Open_Data_RDW__Gebreken.csv')
+
+total1 <- merge(Personal_car_detail,Observed_Defects,by='Kenteken')
+total2 <- merge(total1,Defect_Details,by='Gebrek.identificatie')
+total3 <- select(total2,c('Merk','Handelsbenaming',
+                         'Datum.tenaamstelling','Gebrek.identificatie',
+                         'Aantal.gebreken.geconstateerd'))
+
+```
+
+```{r, eval=FALSE, include=FALSE}
+#### Data Clean
+total5 <- na.omit(total3)
+colnames(total5) <- c('Make','Model','Shooting_Date','Defect_Code','Number_of_Defects')
+FormalDate <- dmy(total5$Shooting_Date)
+temp_total2 <- cbind(total5,FormalDate)
+total_2017 <- temp_total2[format(temp_total2$FormalDate,format = '%Y')=='2017',]
+
+total_2017 <- mutate(total_2017,Defect_Code_char = as.character(total_2017$Defect_Code))
+total_2017 <- mutate(total_2017,Make_Model = paste(Make, Model, sep="/"))
+```
+
+
+## Part d
+Through the summary of data in 2017, there are 354 makes and 22275 models.\
+```{r}
+#### Summary of Make and Model
+total_2017 <- read.table('total_2017')
+length(levels(factor(total_2017$Make)))
+length(levels(factor(total_2017$Model)))
+```
+
+## Part e
+```{r}
+#### Summary of Top 5 Defects and Make/Models
+Defect_list <- sort(table(total_2017$Defect_Code),decreasing = TRUE)
+Top5_defect <- data.frame(Defect_list[1:5])
+
+Defect_list <- NULL
+Target_MakeModel_List <- NULL
+for (i in 1:5){
+    CertainDefect <- as.character(Top5_defect[i,1])
+    Defect_list <- c(Defect_list,CertainDefect)
+    temp <- filter(total_2017, Defect_Code_char == CertainDefect)
+    MakeModel_List_CertainDefect <- sort(table(temp$Defect_Code),decreasing = TRUE)
+    
+    temp_summary_2017 <- temp %>% group_by(Make_Model) %>% 
+        mutate(makemodel_defect = paste(Make_Model,Defect_Code,sep="_"))
+    
+    makemodel_defect_summary <- sort(tapply(temp_summary_2017$Number_of_Defects,
+                                            temp_summary_2017$makemodel_defect,sum),
+                                            decreasing = TRUE)
+    Top5_makemodel_defect <- makemodel_defect_summary[1:5]
+    Target_MakeModel <- row.names(Top5_makemodel_defect)[1]
+    Target_MakeModel_List <- c(Target_MakeModel_List,Target_MakeModel)
+}
+
+Relation <- cbind(Defect_list,Target_MakeModel_List)
+colnames(Relation) <- c('Defect','Make/Model')
+knitr::kable(Relation, caption="TOP Make/Models of Five Common Defects")
+```
+
+## Part f & g
+The lm and aov functions have been attempted to explore the relationship between number of defects and make/models. However, as the value of make/model is not numeric, the software could not give the results.
+
+```{r, eval=FALSE, include=FALSE}
+#### lm regression between make and defect
+summary_2017 <- total_2017 %>% group_by(Make_Model, Defect_Code) %>% 
+    mutate(makemodel_defect = paste(Make_Model,Defect_Code,sep="_"))
+
+summary_2017 <- summary_2017 %>% group_by(Make, Defect_Code) %>% 
+    mutate(make_defect = paste(Make,Defect_Code,sep="_"))
+
+    
+make_defect_summary_2017 <- data.frame(sort(tapply(summary_2017$Number_of_Defects,
+                                summary_2017$make_defect,sum),decreasing = TRUE))
+colnames(make_defect_summary_2017) <- 'Count'
+NameList <- row.names(make_defect_summary_2017)
+Result <- cbind(NameList,as.integer(make_defect_summary_2017$Count))
+colnames(Result) <- c('NameList','Count')
+lm(NameList ~ Count, data = data.frame(Result[1:10,]))
+aov(Count ~ NameList, data = data.frame(Result[1:10,]))
+
+#### lm regression between model and defect
+makemodel_defect_summary_2017 <- data.frame(sort(tapply(summary_2017$Number_of_Defects,
+                                                        summary_2017$makemodel_defect,sum),
+                                                        decreasing = TRUE))
+colnames(makemodel_defect_summary_2017) <- 'Count'
+NameList <- row.names(makemodel_defect_summary_2017)
+Result <- cbind(NameList,as.integer(makemodel_defect_summary_2017$Count))
+colnames(Result) <- c('NameList','Count')
+lm(Count ~ NameList, data = data.frame(Result[1:10,]))
+```
+
+
+
+## Part h
+
+This workflow considers all the possible records at first, which lead to high volume of computing capacity. So if the contraint could be applied at first, such as the year 2017, the computation capacity could be reduced a lot. 
