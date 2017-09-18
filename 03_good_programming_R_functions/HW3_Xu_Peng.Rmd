@@ -78,9 +78,15 @@ The statistics of two devices are summarized as the table below.\
 
 The boxplot and violin plot are also drawn below.\
 ```{r,fig.height = 3, fig.width = 5}
-    boxplot(cbind(FinalResult$Mean1,FinalResult$Mean2),
+    boxplot(FinalResult$Mean1,
             main= toupper("Mean Boxplot"), 
-            xlab="Dev1 and Dev2", ylab="Mean Value")
+            xlab="Dev1", ylab="Mean Value")
+```
+
+```{r,fig.height = 3, fig.width = 5}
+    boxplot(FinalResult$Mean2,
+            main= toupper("Mean Boxplot"), 
+            xlab="Dev2", ylab="Mean Value")
 ```
 
 
@@ -89,13 +95,22 @@ library(vioplot)
 library(sm)
 
 x1 <- FinalResult$Std1
-x2 <- FinalResult$Std2
 
-vioplot(x1, x2, names=c("STD1", "STD2"), 
+vioplot(x1, names=c("STD1"), 
    col="gold")
-title("STD Violin Plot")
+title("STD1 Violin Plot")
 ```
 
+```{r,fig.height = 3, fig.width = 5}
+library(vioplot)
+library(sm)
+
+x2 <- FinalResult$Std2
+
+vioplot(x2, names=c("STD2"), 
+   col="gold")
+title("STD2 Violin Plot")
+```
 
 # Problem 7
 ```{r, include=FALSE}
