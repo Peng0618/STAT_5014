@@ -1,0 +1,107 @@
+---
+title: "HW4_Xu_Peng"
+author: "Peng Xu"
+date: "2017/9/24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(ggExtra)
+library(MASS)
+library(xlsx)
+
+library(ggplot2)
+library(tidyr)
+
+knitr::opts_chunk$set(echo = TRUE)
+
+scatterBarNorm <- function(x, dcol="blue", lhist=20, num.dnorm=5*lhist, ...){
+    ## check input
+    stopifnot(ncol(x)==2)
+    ## set up layout and graphical parameters
+    layMat <- matrix(c(2,0,1,3), ncol=2, byrow=TRUE)
+    layout(layMat, widths=c(5/7, 2/7), heights=c(2/7, 5/7))
+    ospc <- 0.5 # outer space
+    pext <- 4 # par extension down and to the left
+    bspc <- 1 # space between scatter plot and bar plots
+    par. <- par(mar=c(pext, pext, bspc, bspc),
+                oma=rep(ospc, 4)) # plot parameters
+    ## scatter plot
+    plot(x, xlim=range(x[,1]), ylim=range(x[,2]), pch=20, ...)
+    ## 3) determine barplot and height parameter
+    ## histogram (for barplot-ting the density)
+    xhist <- hist(x[,1], plot=FALSE, breaks=seq(from=min(x[,1]),
+                to=max(x[,1]),  length.out=lhist))
+    yhist <- hist(x[,2], plot=FALSE, breaks=seq(from=min(x[,2]),
+                to=max(x[,2]),  length.out=lhist)) # note: this uses probability=TRUE
+    ## determine the plot range and all the things needed for the barplots and lines
+    xx <- seq(min(x[,1]), max(x[,1]), length.out=num.dnorm) # evaluation points for the overlaid density
+    xy <- dnorm(xx, mean=mean(x[,1]), sd=sd(x[,1])) # density points
+    yx <- seq(min(x[,2]), max(x[,2]), length.out=num.dnorm)
+    yy <- dnorm(yx, mean=mean(x[,2]), sd=sd(x[,2]))
+    ## barplot and line for x (top)
+    par(mar=c(0, pext, 0, 0))
+    barplot(xhist$density, axes=FALSE, ylim=c(0, max(xhist$density, xy)),
+            space=0, col = "grey") # barplot
+    lines(seq(from=0, to=lhist-1, length.out=num.dnorm), xy, col=dcol) # line
+    ## barplot and line for y (right)
+    par(mar=c(pext, 0, 0, 0))
+    barplot(yhist$density, axes=FALSE, xlim=c(0, max(yhist$density, yy)),
+            space=0, horiz=TRUE, col = "orange") # barplot
+    lines(yy, seq(from=0, to=lhist-1, length.out=num.dnorm), col=dcol) # line
+    ## restore parameters
+    par(par.)
+}
+```
+
+# Question 3
+The EDA process provide the "rough cut" for a data analysis. According to Roger Peng, six principles should be summarized as followed.
+1) show comparison from different aspects.
+2) show causality, mechanism. explanation, and systematic structure. Different factors could be connected to explain one phenomena.
+3) show multivariate data. It may uncover unexpected relationships with more features.
+4) integrate different evidence to a graphic.
+5) describe and document the evidence. A graphic should tell a complete story by itself.
+6) present graphics with high-quality content
+
+
+# Question 4
+
+## Part 1
+```{r}
+prob4_data1 <- read.xlsx("HW4_data.xlsx", sheetIndex = 1)
+prob4_data2 <- read.xlsx("HW4_data.xlsx", sheetIndex = 2)
+prob4_RawData <- rbind(prob4_data1,prob4_data2)
+summary(prob4_RawData)
+```
+
+## Part 2
+There are three factors: block, depth, phosphate. The block number seems to be the number of different experiment groups, while depth and phosphate are different measurements of each experiment. 
+
+
+## Part 3
+
+```{r, fig.align='center', fig.width=6, fig.height=4}
+CleanData <- gather(prob4_RawData,type,value = measurement, depth,phosphate)
+CleanData_n <- transform(CleanData, block = as.factor(block))
+CleanData_n <- transform(CleanData_n, type = as.factor(type))
+ggplot(CleanData_n, aes(x=block, y=measurement, fill=type))+geom_boxplot()
+```
+
+
+```{r, fig.align='center', fig.width=6, fig.height=4}
+Target <- data.frame(cbind(prob4_RawData$depth ,prob4_RawData$phosphate))
+scatterBarNorm(Target, xlab=expression(italic(depth)),
+                   ylab=expression(italic(phosphate)))
+```
+
+## Part 4
+
+```{r, fig.align='center', fig.width=6, fig.height=4}
+pairs(prob4_RawData)
+```
+
+## Part 5
+From the summary plot, the block seems to be index number of groups, while depth and phosphate are measurement values. The distributions of depth and phosphate are very similar and almost follow the normal distribution. 
+
+
