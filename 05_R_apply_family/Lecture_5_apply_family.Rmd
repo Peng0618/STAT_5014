@@ -1,0 +1,286 @@
+---
+title: 'Projecting knowledge in plots'
+author: "Bob Settlage"
+date: '`r Sys.Date()`'
+output:
+  ioslides_presentation:
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 4
+    smaller: yes
+  slidy_presentation: default
+---
+
+```{r misc_function, eval=T, echo=F, warnings=F}
+knitr::opts_chunk$set(echo = F, eval=T, cache=T, tidy.opts=list(width.cutoff=53),
+                tidy=T, include=T, message=F, warning=F)
+library(ggplot2)
+library(ggExtra)
+library(MASS)
+##this posted answer rocks!!
+##https://stackoverflow.com/questions/11022675/rotate-histogram-in-r-or-overlay-a-density-in-a-barplot
+
+scatterBarNorm <- function(x, dcol="blue", lhist=20, num.dnorm=5*lhist, ...){
+    ## check input
+    stopifnot(ncol(x)==2)
+    ## set up layout and graphical parameters
+    layMat <- matrix(c(2,0,1,3), ncol=2, byrow=TRUE)
+    layout(layMat, widths=c(5/7, 2/7), heights=c(2/7, 5/7))
+    ospc <- 0.5 # outer space
+    pext <- 4 # par extension down and to the left
+    bspc <- 1 # space between scatter plot and bar plots
+    par. <- par(mar=c(pext, pext, bspc, bspc),
+                oma=rep(ospc, 4)) # plot parameters
+    ## scatter plot
+    plot(x, xlim=range(x[,1]), ylim=range(x[,2]), pch=20, ...)
+    ## 3) determine barplot and height parameter
+    ## histogram (for barplot-ting the density)
+    xhist <- hist(x[,1], plot=FALSE, breaks=seq(from=min(x[,1]),
+                to=max(x[,1]),  length.out=lhist))
+    yhist <- hist(x[,2], plot=FALSE, breaks=seq(from=min(x[,2]),
+                to=max(x[,2]),  length.out=lhist)) # note: this uses probability=TRUE
+    ## determine the plot range and all the things needed for the barplots and lines
+    xx <- seq(min(x[,1]), max(x[,1]), length.out=num.dnorm) # evaluation points for the overlaid density
+    xy <- dnorm(xx, mean=mean(x[,1]), sd=sd(x[,1])) # density points
+    yx <- seq(min(x[,2]), max(x[,2]), length.out=num.dnorm)
+    yy <- dnorm(yx, mean=mean(x[,2]), sd=sd(x[,2]))
+    ## barplot and line for x (top)
+    par(mar=c(0, pext, 0, 0))
+    barplot(xhist$density, axes=FALSE, ylim=c(0, max(xhist$density, xy)),
+            space=0, col = "grey") # barplot
+    lines(seq(from=0, to=lhist-1, length.out=num.dnorm), xy, col=dcol) # line
+    ## barplot and line for y (right)
+    par(mar=c(pext, 0, 0, 0))
+    barplot(yhist$density, axes=FALSE, xlim=c(0, max(yhist$density, yy)),
+            space=0, horiz=TRUE, col = "orange") # barplot
+    lines(yy, seq(from=0, to=lhist-1, length.out=num.dnorm), col=dcol) # line
+    ## restore parameters
+    par(par.)
+}
+
+```
+
+## Today's Agenda
+
+- Review good programming practices  
+- Review functions and looping  
+- Review Data Exploration
+- Introduce the apply family of functions
+- Homework 5
+
+
+## Good Programming Practices
+
+Reproducible Research requires well annotated, readable code.  
+
+There are standards for that.  
+
+Google's R Style Guide <https://google.github.io/styleguide/Rguide.xml>  
+Hadley Wickam's Style Guide: <http://r-pkgs.had.co.nz/style.html>  
+Jef Works: <http://jef.works/R-style-guide/>
+
+## Good Programming Practices cont
+
+At the **VERY** least:
+
+1. variable/object names  
+    + nouns describing what the object holds, e.g. originaData instad of d  
+    + DO NOT use existing variables or functions, e.g. T<-1000
+2. function formation  
+    + function names should be verb associated with the function purpose  
+    + comment both function purpose and required arguments    
+    + arguments should have defaults (my personal preference)
+    + my preference is to explicitly return a value  
+3. commenting rules  
+    + comment your code!!  'nough said?  
+4. indent within logical blocks of code !!
+    + indenting improves the readability of the code by orders of magnetute!  
+
+## Exploratory Data Analysis (EDA)
+
+Data exploration is the process of learning about your data.
+
+Free book (in Rbookdown with pay options): <https://leanpub.com/exdata>
+
+In my experience, plots are crucial in learning about your data.  I make A LOT of plots when I get a dataset.  Plots can also be very helpful in assumption checking.  The more factors you have, the more difficult it is to come up with a single (meaningful) plot that gives you a useful view into the data.
+
+Free course:
+<https://www.udacity.com/course/data-analysis-with-r--ud651>
+
+"Exploratory data analysis is an approach for summarizing and visualizing the important characteristics of a data set. Promoted by *John Tukey*, exploratory data analysis focuses on exploring data to understand the data’s underlying structure and variables, to develop intuition about the data set, to consider how that data set came into existence, and to decide how it can be investigated with more formal statistical methods."
+
+Velleman, Paul and Hoaglin, David (1981), The ABC's of EDA: Applications, Basics, and Computing of Exploratory Data Analysis, Duxbury.
+
+## NIST and EDA
+
+<http://www.itl.nist.gov/div898/handbook/eda/eda.htm>
+
+1. what is typical value  
+2. what is undertainty for typical value  
+3. what is a good distribution for the set of numbers  
+4. what is the relationship between factors  
+5. what are the most important factors  
+6. is there a structure to the data  
+7. are there outliers  
+
+## NIST comments on assumptions for measurement processes
+
+1. random drawings  
+2. fixed distribution  
+3. distribution has fixed location  
+4. distribution has fixed variation  
+
+Univariate or single response variable leads to this model:  
+`response = constant + error`
+
+Which then gives this set of assumptions
+
++ data are uncorrelated 
++ random component has a fixed distribution  
++ deterministic component is a constant  
++ random component has a fixed variation  
+
+## Useful functions and tools to explore data
+
+1. dim()  
+2. str()  
+3. summary()  
+4. mean, sd, is.na, complete.cases, range
+5. summaryBY (aggregate)
+6. scatter plot, hist (plus rug), barplot, boxplot, violin plots, pie
+7. qqplot, qplot, ggplot2, pairs
+8. ordination and PCA plots
+9. hive, circular, network plots
+10. dendrograms, heatmaps, etc etc
+
+## Functions
+
+A function is an _**object**_ that takes some input objects (args) and produces some output objects.
+
+```{r echo=T, eval=F, tidy=F}
+    dataA <- 1;dataB <- 2
+    BAD<-function(x){
+        mean(c(x,dataA))
+    }
+    computeMeanGOOD <- function(x=3,y=5){
+        # quick function to compute the geometric mean of two numbers, x and y
+        # returns geometric mean
+        if (!is.numeric(x) || !is.numeric(y)) stop("both x and y must be numeric")
+        return(mean(c(x,y)))
+    }
+    BAD(x=dataB)
+    computeMeanGOOD(x=dataA,y=dataB)
+```
+
+GOOD functions include passing in ALL necessary data.  Ideally our code includes error checking.
+
+_**All**_ work in R is done in functions. '[<-'(animals,4,"duck")
+
+## Variable scope
+
+R uses Lexical scoping rules.  REALLY good guide:  
+
+<http://adv-r.had.co.nz/Environments.html>
+
+What is v?
+```{r eval=F, echo=T, results='asis', tidy=F}
+    v <- 1:5
+    swapElements <- function(v, i=1, j=2){
+        v[c(i,j)] <- v[c(j,i)]
+    }
+    invisible(swapElements(v))
+    v
+```
+
+
+## Programming loops
+
+Currently we have `for`, `while`, and `repeat`, each of which can be modified by **break** and **next**.  Further, we have `if else` (and `switch`) to branch.  Help on these needs quotes, i.e. ?"for".
+
+```{r echo=T, eval=T, cache=F}
+    Iter <- 20
+    cumIndex <- 0
+    for(i in 1:Iter){
+        cumIndex <- cumIndex + 1
+        if((cumIndex %% 6) == 0){ 
+            print(cumIndex)
+        }
+    }
+
+```
+
+## Loops and functions
+
+Combining loops and functions allows you to automate tedious tasks.
+
+```{r, eval=F, echo=T, tidy=T}
+    library(tidyverse)
+    #read in and tidy data
+    example_data<-readRDS("../03_good_programming_R_functions/HW3_data.rds")
+    example_data_tidy<-example_data %>%
+        gather(dev, observer, dev1:dev2) %>%
+        mutate(dev=gsub("dev","",dev))
+    #make quick function to get mean, sd
+    computeMeanSD<-function(x){
+        temp<-c(mean(x$observer[x$dev==1]),
+                mean(x$observer[x$dev==2]),cor(x[x$dev==1,3],x[x$dev==2,3]))
+        return(temp)
+    }
+    #create container for results, loop through data and get stats
+    summary_df<-data.frame(NA,nrow=13,ncol=3)
+    for(i in 1:13){
+        summary_df[i,]<-computeMeanSD(x=example_data_tidy[example_data_tidy$Observer==i,])
+    }
+```
+
+## Apply family of functions
+
+We often want to "apply" a function along a "margin" of our data.  In the previous example, we used a function to loop through observers to calculate summary statistics.
+
+In R, we have helper functions to further simplify our code by obviating the for loop.
+
+Apply family:
+
+apply, lapply , sapply, vapply, mapply, rapply, and tapply
+
+Nice tutorial:  
+<https://www.r-bloggers.com/r-tutorial-on-the-apply-family-of-functions/>
+
+## Apply detail
+
+*apply(X, MARGIN, FUN, ...)*
+
+```{r echo=T, eval=F, include=T}
+    # ?apply
+    x <- cbind(x1 = 3, x2 = c(4:1, 2:5))
+    dimnames(x)[[1]] <- letters[1:8]
+    x
+    apply(x, 2, mean, trim = .2)
+    col.sums <- apply(x, 2, sum)
+    row.sums <- apply(x, 1, sum)
+
+```
+
+## What is difference between various apply functions
+
+We could start with the help `?apply, ?sapply`. The main differences are:  
+ <http://www.dummies.com/programming/r/how-to-use-the-apply-family-of-functions-in-r/>
+ 
+## Apply functions
+
+```{r apply_descriptions, eval=T, echo=F, include=T, results='asis'}
+
+    library(rvest)
+    library(kableExtra)
+    webpage <- read_html("http://www.dummies.com/programming/r/how-to-use-the-apply-family-of-functions-in-r/")
+    tbls <- html_nodes(webpage, "table")
+    tbls_ls <- webpage %>%
+            html_nodes("table") %>%
+            #.[c(2:5,16:18)] %>%
+            html_table(fill = TRUE)
+    tbls_ls <- tbls_ls[[1]]
+    knitr::kable(tbls_ls) %>% 
+        kable_styling(font_size=5)
+```
+
+## Homework 5
