@@ -1,0 +1,155 @@
+---
+title: "Homework 6"
+author: "Peng Xu"
+date: "10/10/2017"
+output: html_notebook
+---
+
+```{r}
+Sys.setenv(LANG = "en")
+```
+
+# Problem 2
+```{r}
+set.seed(12345)
+y <- seq(from = 1, to = 100, length.out = 1e+08) + rnorm(1e+08)
+
+```
+
+## Part a
+```{r}
+system.time({
+YMean <- mean(y)
+SST <- 0
+for(i in 1:length(y)){
+    SST <- SST + (y[i]-YMean)^2
+}
+})
+```
+## Part b
+```{r}
+YMean <- mean(y)
+perSS <- function(x){
+    SS <- (x-YMean)^2
+    return(SS)
+}
+system.time({
+    result <- apply(as.matrix(y),MARGIN = 2,perSS)
+    SST2 <- sum(result)
+})
+```
+
+Clearly, the vector operations is more efficient than the for-loop method.
+
+
+# Problem 3
+```{r}
+set.seed(1256)
+theta <- as.matrix(c(1, 2), nrow = 2)
+X <- cbind(1, rep(1:10, 10))
+h <- X %*% theta + rnorm(100, 0, 0.2)
+```
+
+
+```{r}
+theta0_init <- 0
+theta1_init <- 1
+theta0_temp <- theta0_init
+theta1_temp <- theta1_init
+theta0_temp2 <- theta0_init
+theta1_temp2 <- theta1_init
+thres0 <- 0.0001  # the tolerance value
+thres1 <- 0.0001
+alpha <- 0.05     # the step size
+m <- length(h)
+error0 <- 1
+error1 <- 1
+while(error0 > thres0 & error1 > thres1){
+    theta_temp <- as.matrix(c(theta0_temp, theta1_temp), nrow = 2)
+    theta0_temp2 <- theta0_temp - alpha*sum(X %*% theta_temp - h)/m
+    theta1_temp2 <- theta1_temp - alpha*sum((X %*% theta_temp - h)*X[,2])/m
+    theta0_temp2
+    theta1_temp2
+    
+    error0 <- abs(theta0_temp2 - theta0_temp)
+    error1 <- abs(theta1_temp2 - theta1_temp)
+    
+    theta0_temp <- theta0_temp2
+    theta1_temp <- theta1_temp2
+}
+theta0_temp2
+theta1_temp2
+
+```
+
+```{r}
+model <- lm(h~0+X)
+summary(model)
+```
+After comparison, the lm method is more accurate than the gradient descent method.
+
+# Problem 4
+```{r}
+beta_hat <- solve(t(X)%*%X, t(X)%*%h)
+beta_hat
+
+```
+
+# Problem 5
+```{r}
+set.seed(12456)
+G <- matrix(sample(c(0, 0.5, 1), size = 16000, replace = T),
+ncol = 10)
+R <- cor(G) # R: 10 * 10 correlation matrix of G
+C <- kronecker(R, diag(1600)) # C is a 16000 * 16000 block diagonal matrix
+id <- sample(1:16000, size = 932, replace = F)
+q <- sample(c(0, 0.5, 1), size = 15068, replace = T) # vector of length 15068
+A <- C[id, -id] # matrix of dimension 932 * 15068
+B <- C[-id, -id] # matrix of dimension 15068 * 15068
+p <- runif(932, 0, 1)
+r <- runif(15068, 0, 1)
+C <- NULL #save some memory space
+
+```
+
+## Part a
+A is of 107.1 Mb while B's size is 1.7 Gb. Without any optimization, the calculation time is 996.17 s.
+
+```{r}
+system.time({
+y <- p + A%*%solve(B)%*%(q-r)
+})
+```
+
+## Part b
+The LU decomposition method has been tried to optimize the calculation. However, the result is not satisfied.
+```{r}
+library(matrixcalc)
+system.time({
+    luB <- lu.decomposition(B)
+    L <- luB$L
+    U <- luB$U
+
+    B_inv <- solve(lu_decomp$U, solve(lu_decomp$L, diag(15068)))
+})
+```
+
+## Part c
+```{r}
+system.time({
+y <- p + A%*%chol2inv(chol(B))%*%(q-r)
+})
+```
+The time of chol2inv is 1458.47 s.
+
+
+```{r}
+system.time({
+    yy <- p + A%*%matrix.inverse(B)%*%(q-r)
+})
+```
+The time of matrix.inverse is 803.64 s.
+
+
+
+
